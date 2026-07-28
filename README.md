@@ -1,18 +1,19 @@
-# 🪞 exact-web-mirror
+<h1 align="center">🪞 exact-web-mirror</h1>
 
-### Ever seen an animation on a site and wondered *how did they build that?* 🤔
+<p align="center"><strong>Save the site — not just the screenshot.</strong></p>
+<p align="center">Open a page. Capture it once. Pull the network. It still moves.</p>
+<p align="center"><code>HTML</code> · <code>CSS</code> · <code>JavaScript</code> · <code>fonts</code> · <code>video</code> · <code>motion</code></p>
 
-Open the page, hit **Save Page As**, and you get… a broken mess. No styles. No motion. Half the
-files missing. The one thing you actually wanted — the code that makes it move — is gone. 😤
+<p align="center">
+  <img src="showcase/mirrored-sites.gif" width="720" alt="A fast tour of six production landing pages replayed locally with exact-web-mirror">
+</p>
+<p align="center"><sub>Six real production landing pages, screen-recorded from local replays. The tour is sped up 6×.</sub></p>
 
-**exact-web-mirror captures the page for real.** Every byte the browser received, saved exactly as
-it arrived, so the site's own HTML, CSS, JavaScript, fonts, and video keep running from a folder on
-your disk. Every animation is the original code executing — not a screenshot, not a rebuild. ✨
+Modern pages are assembled at run time, often from several domains. **exact-web-mirror captures the
+page for real:** every response the browser receives is saved as it arrived, then replayed from a
+folder on your disk. The site's own code keeps running, including its original animations and video.
 
-![The offline copy running with every non-localhost request blocked](demo/media/offline-copy.gif)
-
-> ☝️ That's a **local copy**, running with the network cut off. The counter in the corner is the page
-> checking itself: 5 / 5 of its resources survived. Read on for what those five are. 👇
+> ✨ **Not a rebuild. Not a screenshot. A replayable archive.**
 
 ---
 
@@ -27,17 +28,17 @@ your disk. Every animation is the original code executing — not a screenshot, 
 
 ## 😬 Why "Save Page As" and wget aren't enough
 
-They grab the HTML and whatever is *written in it*. But modern sites don't put it all in the HTML —
-they assemble themselves while running, fetching scripts, fonts, data, and video from other domains
-with addresses computed on the fly. There's nothing in the file to follow.
+A static downloader can only follow URLs it can see. Modern sites create many of those URLs while
+they run: hashed script chunks, cross-origin fonts, API-fed content, lazy images, and byte-range
+video. The missing pieces are often exactly what made the page interesting. 🫠
 
-Here's a real run against [the demo page in this repo](demo/), giving wget the most generous flags
-it has (`-p -k -E -H -e robots=off`):
+**exact-web-mirror doesn't guess.** It watches a real Chrome session, records the requests that
+actually happen, preserves the response bytes untouched, and maps the original URLs back to those
+files during local replay.
 
-![wget versus exact-web-mirror, side by side](demo/media/wget-vs-mirror.png)
-
-wget does **well** — it gets the HTML, the stylesheet, the entry module, even the video. It still
-can't get the two files that only exist once the page is running, and the page notices. 🕵️
+```text
+live page  →  real Chrome  →  byte-pristine archive  →  offline mirror  →  visual verification
+```
 
 ## 🧠 So how does this work?
 
@@ -151,46 +152,49 @@ machine.
 
 ---
 
-## 🧪 Try it on the demo page
+## 🪩 Mirror gallery
 
-This repo ships **[The Hard Page](demo/)** — a fixture built to be hard to copy, and which grades
-its own capture. Everything on it is original to this repo, so you can capture it, break it, and
-share the results freely. 🆓
+These are some of the **production landing pages we mirrored using exact-web-mirror** while
+hardening the tool: modern JavaScript apps with hashed chunks, cross-origin CDN assets, web fonts,
+and hero video. Each card opens an optimized animated pass; the small thumbnails keep this README
+quick to load. ✨
 
-```bash
-cd demo && node serve-demo.mjs --open        # then capture it from another terminal
-```
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <a href="showcase/mistral-ai.gif"><img src="showcase/thumbs/mistral-ai.webp" width="240" alt="Mistral local mirror preview"></a><br>
+      <strong>Mistral</strong><br><sub><a href="https://mistral.ai/">source ↗</a> · <a href="showcase/mistral-ai.gif">animated pass ▶</a></sub>
+    </td>
+    <td align="center" width="33%">
+      <a href="showcase/moonshot-ai.gif"><img src="showcase/thumbs/moonshot-ai.webp" width="240" alt="Moonshot local mirror preview"></a><br>
+      <strong>Moonshot AI</strong><br><sub><a href="https://www.moonshot.ai/">source ↗</a> · <a href="showcase/moonshot-ai.gif">animated pass ▶</a></sub>
+    </td>
+    <td align="center" width="33%">
+      <a href="showcase/lambda-ai.gif"><img src="showcase/thumbs/lambda-ai.webp" width="240" alt="Lambda local mirror preview"></a><br>
+      <strong>Lambda</strong><br><sub><a href="https://lambda.ai/">source ↗</a> · <a href="showcase/lambda-ai.gif">animated pass ▶</a></sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="33%">
+      <a href="showcase/kore-ai.gif"><img src="showcase/thumbs/kore-ai.webp" width="240" alt="Kore local mirror preview"></a><br>
+      <strong>Kore.ai</strong><br><sub><a href="https://kore.ai/">source ↗</a> · <a href="showcase/kore-ai.gif">animated pass ▶</a></sub>
+    </td>
+    <td align="center" width="33%">
+      <a href="showcase/sierra-ai.gif"><img src="showcase/thumbs/sierra-ai.webp" width="240" alt="Sierra local mirror preview"></a><br>
+      <strong>Sierra</strong><br><sub><a href="https://sierra.ai/">source ↗</a> · <a href="showcase/sierra-ai.gif">animated pass ▶</a></sub>
+    </td>
+    <td align="center" width="33%">
+      <a href="showcase/nebius-com.gif"><img src="showcase/thumbs/nebius-com.webp" width="240" alt="Nebius local mirror preview"></a><br>
+      <strong>Nebius</strong><br><sub><a href="https://nebius.com/">source ↗</a> · <a href="showcase/nebius-com.gif">animated pass ▶</a></sub>
+    </td>
+  </tr>
+</table>
 
-## 🌐 What it's been run against
+The gallery GIFs are accelerated 2–4×; the mirrors themselves run at normal speed. The captured
+website archives are not shipped here—only these lightweight screen recordings.
 
-The demo fixture is deliberately hostile, but it's synthetic. The pipeline was built and hardened
-against six real production landing pages — modern JavaScript-app sites with hashed chunks,
-cross-origin CDN assets, web fonts, and hero video:
-
-[mistral.ai](https://mistral.ai/) · [moonshot.ai](https://www.moonshot.ai/) ·
-[lambda.ai](https://lambda.ai/) · [kore.ai](https://kore.ai/) ·
-[sierra.ai](https://sierra.ai/) · [nebius.com](https://nebius.com/)
-
-**Those captures aren't distributed here — only the tool is.** What the retained logs show, from
-replaying each copy offline with all non-localhost traffic blocked (desktop pass):
-
-| Site | Page errors | Blocked outbound attempts |
-|---|---|---|
-| mistral.ai | 0 | 0 |
-| moonshot.ai | 0 | 0 |
-| sierra.ai | 0 | 0 |
-| lambda.ai | 0 | 1 |
-| nebius.com | 0 | 1 |
-| kore.ai | 2 | 4 |
-
-Every copy rendered and ran with no network at all. The blocked attempts are analytics and
-tag-manager beacons that keep firing offline and go nowhere — the intended behaviour, not a failure.
-
-Being straight about the limits of that evidence: those runs printed their band-by-band diff numbers
-to the console and never wrote them to disk, so **this repository can't back a pixel-fidelity claim
-for them.** The capture with complete, reproducible numbers is the demo fixture above — 0px height
-difference on both viewports, 0.39% / 0.13% mean band diff confined to the animated regions — and
-you can re-run that one yourself in about ten minutes. 🔁
+<sub>Site names, designs, and trademarks belong to their respective owners. They are shown as tool
+examples only; no affiliation or endorsement is implied.</sub>
 
 ## 🔧 Running the stages yourself
 
@@ -227,7 +231,7 @@ skills/exact-web-mirror/
   SKILL.md             what Claude reads: when to use this and how
   references/          design notes and debugging gotchas
   scripts/             the pipeline
-demo/                  The Hard Page fixture + the recordings above
+showcase/              README-ready GIF gallery and thumbnails
 install.sh             symlink or copy the skill into ~/.claude/skills/
 ```
 

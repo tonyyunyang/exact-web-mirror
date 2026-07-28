@@ -17,3 +17,7 @@ Thumbs.db
 # logs
 *.log
 npm-debug.log*
+
+# local social-launch assets (prepared media + copy; never commit)
+/showcase/social/
+/x-share-kit/
