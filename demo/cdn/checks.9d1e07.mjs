@@ -43,8 +43,18 @@ function loadPlate() {
   });
 }
 
-// TRAP 05 — the hero trace has to still be drawing, not sitting on a captured still.
+// TRAP 05 — the hero shader has to still be drawing, not sitting on a captured still.
+// Compiling and linking a WebGL program takes a moment, so poll rather than reading once: a single
+// early read would say "stopped" for a shader that is merely still starting up.
 const canvasRunning = () => typeof window.__traceRunning === 'function' && window.__traceRunning();
+async function awaitCanvas(timeout = 6000) {
+  const until = Date.now() + timeout;
+  while (Date.now() < until) {
+    if (canvasRunning()) return true;
+    await new Promise((r) => setTimeout(r, 120));
+  }
+  return false;
+}
 
 function reveal() {
   const items = [...document.querySelectorAll('.trap')];
@@ -78,18 +88,21 @@ function verdict(live) {
 
 export async function run() {
   reveal();
+  const css = cssLoaded();
   setState('module', true, 'live');            // this code executing is the proof
-  setState('css', cssLoaded(), cssLoaded() ? 'live' : 'missing');
-  setState('canvas', canvasRunning(), canvasRunning() ? 'live' : 'stopped');
+  setState('css', css, css ? 'live' : 'missing');
 
   const stamp = document.getElementById('stamp');
   if (stamp) stamp.textContent = new Date().toISOString().replace('T', ' ').slice(0, 19) + 'Z';
 
-  const [video, plate] = await Promise.all([watchVideo(), loadPlate()]);
+  // Resolve every check to a single value, then report — the dots and the count must never
+  // disagree, or the page is grading itself dishonestly.
+  const [video, plate, canvas] = await Promise.all([watchVideo(), loadPlate(), awaitCanvas()]);
   setState('video', video, video ? 'live' : 'no body');
   setState('runtime', plate, plate ? 'live' : 'unresolved');
+  setState('canvas', canvas, canvas ? 'live' : 'stopped');
 
-  const live = [cssLoaded(), true, video, plate, canvasRunning()].filter(Boolean).length;
+  const live = [css, true, video, plate, canvas].filter(Boolean).length;
   verdict(live);
 
   const v = document.getElementById('loop');

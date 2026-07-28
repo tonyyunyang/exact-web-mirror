@@ -161,6 +161,37 @@ share the results freely. 🆓
 cd demo && node serve-demo.mjs --open        # then capture it from another terminal
 ```
 
+## 🌐 What it's been run against
+
+The demo fixture is deliberately hostile, but it's synthetic. The pipeline was built and hardened
+against six real production landing pages — modern JavaScript-app sites with hashed chunks,
+cross-origin CDN assets, web fonts, and hero video:
+
+[mistral.ai](https://mistral.ai/) · [moonshot.ai](https://www.moonshot.ai/) ·
+[lambda.ai](https://lambda.ai/) · [kore.ai](https://kore.ai/) ·
+[sierra.ai](https://sierra.ai/) · [nebius.com](https://nebius.com/)
+
+**Those captures aren't distributed here — only the tool is.** What the retained logs show, from
+replaying each copy offline with all non-localhost traffic blocked (desktop pass):
+
+| Site | Page errors | Blocked outbound attempts |
+|---|---|---|
+| mistral.ai | 0 | 0 |
+| moonshot.ai | 0 | 0 |
+| sierra.ai | 0 | 0 |
+| lambda.ai | 0 | 1 |
+| nebius.com | 0 | 1 |
+| kore.ai | 2 | 4 |
+
+Every copy rendered and ran with no network at all. The blocked attempts are analytics and
+tag-manager beacons that keep firing offline and go nowhere — the intended behaviour, not a failure.
+
+Being straight about the limits of that evidence: those runs printed their band-by-band diff numbers
+to the console and never wrote them to disk, so **this repository can't back a pixel-fidelity claim
+for them.** The capture with complete, reproducible numbers is the demo fixture above — 0px height
+difference on both viewports, 0.39% / 0.13% mean band diff confined to the animated regions — and
+you can re-run that one yourself in about ten minutes. 🔁
+
 ## 🔧 Running the stages yourself
 
 `archive.mjs` is `record` → `extract-media` → `export`; `--verify` adds the last stage.

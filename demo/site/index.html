@@ -122,12 +122,14 @@
         <span class="trap-dot" aria-hidden="true"></span>
         <span class="trap-state">checking…</span>
       </div>
-      <h2 class="trap-name">An animation that has to keep running</h2>
+      <h2 class="trap-name">A shader that has to keep running</h2>
       <p class="trap-body">
-        The trace behind the title is drawn frame by frame, live. A screenshot of it is not it. The
-        only way to still have this animation later is to still have the code that draws it.
+        The colour field behind the title is a WebGL fragment shader — GLSL source compiled by the
+        browser and redrawn every frame. It is the effect a lot of modern landing pages open with,
+        and there is no image of it anywhere to download. A screenshot of it is not it. The only way
+        to still have this later is to still have the program that draws it.
       </p>
-      <p class="trap-tell">Look up. If the line is moving, the loop is running.</p>
+      <p class="trap-tell">Look up. If the colours are drifting, the shader is compiled and running.</p>
     </li>
 
   </ol>
@@ -150,46 +152,116 @@
 </footer>
 
 <script type="module">
-  // TRAP 05 — the hero trace. Drawn live; a still frame is not a substitute for the code.
+  // TRAP 05 — a WebGL fragment shader, compiled from source at run time and redrawn every frame.
+  // This is the shape of effect modern landing pages use for their hero, and it is the worst case
+  // for any copier that keeps pixels instead of code: the image exists only while the program runs.
+  // There is no image file to download anywhere — a screenshot of this is not this.
   const cv = document.getElementById('trace');
-  const ctx = cv.getContext('2d');
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let w = 0, h = 0, t = 0, running = false;
+  let running = false;
 
-  function size() {
-    const r = Math.min(devicePixelRatio || 1, 2);
-    w = cv.clientWidth; h = cv.clientHeight;
-    cv.width = Math.round(w * r); cv.height = Math.round(h * r);
-    ctx.setTransform(r, 0, 0, r, 0, 0);
+  const VERT = `attribute vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }`;
+
+  // Domain-warped fractal noise, ramped through the page's three ink colours.
+  const FRAG = `
+  precision highp float;
+  uniform vec2 u_res; uniform float u_t;
+
+  vec2 hash(vec2 p){
+    p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
+    return -1.0 + 2.0 * fract(sin(p) * 43758.5453123);
+  }
+  float noise(vec2 p){
+    vec2 i = floor(p), f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(mix(dot(hash(i + vec2(0.0,0.0)), f - vec2(0.0,0.0)),
+                   dot(hash(i + vec2(1.0,0.0)), f - vec2(1.0,0.0)), u.x),
+               mix(dot(hash(i + vec2(0.0,1.0)), f - vec2(0.0,1.0)),
+                   dot(hash(i + vec2(1.0,1.0)), f - vec2(1.0,1.0)), u.x), u.y);
+  }
+  float fbm(vec2 p){
+    float v = 0.0, a = 0.5;
+    for (int i = 0; i < 5; i++){ v += a * noise(p); p *= 2.02; a *= 0.5; }
+    return v;
   }
 
-  // A settling waveform: three sines beating against each other, with the newest sample brightest.
-  function frame() {
-    running = true;
-    ctx.clearRect(0, 0, w, h);
-    const mid = h * 0.5;
-    for (let pass = 0; pass < 3; pass++) {
-      ctx.beginPath();
-      for (let x = 0; x <= w; x += 2) {
-        const p = x / w;
-        const decay = Math.exp(-p * 1.4);
-        const y = mid
-          + Math.sin(p * 15 - t * 1.6 + pass * 1.1) * 44 * decay
-          + Math.sin(p * 41 + t * 0.9 - pass * 0.6) * 13 * decay
-          + Math.sin(p * 6.5 + t * 0.35) * 9;
-        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      }
-      ctx.strokeStyle = ['rgba(255,176,58,0.85)', 'rgba(255,176,58,0.28)', 'rgba(255,61,165,0.22)'][pass];
-      ctx.lineWidth = pass === 0 ? 1.6 : 1;
-      ctx.stroke();
-    }
-    t += 0.016;
-    if (!reduce) requestAnimationFrame(frame);
+  void main(){
+    vec2 uv = (gl_FragCoord.xy - 0.5 * u_res) / u_res.y;
+    float t = u_t * 0.06;
+
+    // warp the sampling domain by another noise field, twice — this is what makes it flow
+    vec2 q = vec2(fbm(uv * 1.6 + vec2(0.0, t)), fbm(uv * 1.6 + vec2(5.2, 1.3 - t)));
+    vec2 r = vec2(fbm(uv * 1.6 + 3.5 * q + vec2(1.7, 9.2) + 0.9 * t),
+                  fbm(uv * 1.6 + 3.5 * q + vec2(8.3, 2.8) - 0.7 * t));
+    float f = fbm(uv * 1.6 + 3.2 * r);
+
+    vec3 ink    = vec3(0.063, 0.075, 0.169);
+    vec3 signal = vec3(1.000, 0.690, 0.227);
+    vec3 trace  = vec3(1.000, 0.239, 0.647);
+
+    vec3 col = mix(ink, trace,  smoothstep(-0.35, 0.55, f));
+    col = mix(col, signal, smoothstep(0.05, 0.62, length(r)));
+    col = mix(col, ink,    smoothstep(0.55, 2.10, length(uv)));   // gentle vignette; CSS masks edges
+    col += 0.03 * fbm(uv * 90.0);                                  // grain, kills banding
+    gl_FragColor = vec4(col, 1.0);
+  }`;
+
+  const gl = cv.getContext('webgl', { antialias: false, alpha: true, powerPreference: 'low-power' });
+
+  function compile(type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+    return s;
   }
 
-  addEventListener('resize', size);
-  size();
-  frame();
+  function start() {
+    const prog = gl.createProgram();
+    gl.attachShader(prog, compile(gl.VERTEX_SHADER, VERT));
+    gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FRAG));
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+    gl.useProgram(prog);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(prog, 'p');
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+    const uRes = gl.getUniformLocation(prog, 'u_res');
+    const uT = gl.getUniformLocation(prog, 'u_t');
+
+    const size = () => {
+      const r = Math.min(devicePixelRatio || 1, 1.5);
+      cv.width = Math.round(cv.clientWidth * r);
+      cv.height = Math.round(cv.clientHeight * r);
+      gl.viewport(0, 0, cv.width, cv.height);
+    };
+    addEventListener('resize', size);
+    size();
+
+    let t0 = null;
+    const frame = (ts) => {
+      if (t0 === null) t0 = ts;
+      running = true;
+      gl.uniform2f(uRes, cv.width, cv.height);
+      gl.uniform1f(uT, (ts - t0) / 1000);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      if (!reduce) requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  }
+
+  try {
+    if (!gl) throw new Error('no webgl context');
+    start();
+  } catch (e) {
+    // Never let a shader failure take the page down — report it and let trap 05 read as stopped.
+    console.error('[hard-page] shader failed:', e);
+    cv.style.display = 'none';
+  }
+
   window.__traceRunning = () => running;
 </script>
 
