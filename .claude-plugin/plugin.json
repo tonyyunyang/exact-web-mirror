@@ -1,0 +1,18 @@
+{
+  "name": "exact-web-mirror",
+  "version": "1.0.0",
+  "description": "Capture a live web page and produce an exact, fully-offline local copy — the site's own real HTML/CSS/JS/fonts/video running in a normal browser, not a hand-rebuilt approximation. Record-and-replay archiving that survives modern JavaScript-app sites where 'Save Page As' and wget fall apart, and that verifies its own fidelity against the live page with screenshots.",
+  "author": { "name": "tony" },
+  "license": "MIT",
+  "keywords": [
+    "web-archive",
+    "record-and-replay",
+    "offline",
+    "mirror",
+    "snapshot",
+    "playwright",
+    "har",
+    "preservation",
+    "service-worker"
+  ]
+}

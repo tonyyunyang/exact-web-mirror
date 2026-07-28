@@ -1,0 +1,19 @@
+{
+  "name": "exact-web-mirror",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Record-and-replay pipeline that captures a live web page and produces an exact, fully-offline local copy of plain files.",
+  "license": "MIT",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "setup": "node setup.mjs",
+    "check": "node setup.mjs --check"
+  },
+  "dependencies": {
+    "playwright": "^1.47.0"
+  },
+  "optionalDependencies": {
+    "sharp": "^0.35.0"
+  }
+}

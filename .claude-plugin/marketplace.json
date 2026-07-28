@@ -1,0 +1,14 @@
+{
+  "name": "exact-web-mirror",
+  "description": "Marketplace for the exact-web-mirror plugin: record-and-replay web archiving that produces byte-exact, fully-offline copies of live web pages.",
+  "owner": { "name": "tony" },
+  "plugins": [
+    {
+      "name": "exact-web-mirror",
+      "source": "./",
+      "version": "1.0.0",
+      "description": "Capture a live web page and produce an exact, fully-offline local copy — the site's own real HTML/CSS/JS/fonts/video running in a normal browser. Verifies its own fidelity against the live page.",
+      "category": "productivity"
+    }
+  ]
+}

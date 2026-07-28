@@ -1,0 +1,19 @@
+# dependencies (installed per-machine by scripts/setup.mjs)
+# package-lock.json IS committed: it pins the audit-clean dependency set for everyone who installs.
+node_modules/
+
+# captured output — archives can be gigabytes and are not part of the tool
+archives/
+*.har
+*.har.zip
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# logs
+*.log
+npm-debug.log*
