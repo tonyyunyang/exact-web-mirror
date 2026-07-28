@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Hard Page — a page built to break Save Page As</title>
+<meta name="description" content="A test fixture for web archiving. Every section depends on a resource that naive downloaders lose. The page reports which ones survived.">
+
+<!-- TRAP 01 — stylesheet on another origin. wget/Save Page As keep the <link> but not the file. -->
+<link rel="stylesheet" href="http://localhost:7802/style.css">
+
+<!-- TRAP 02 — ES module on another origin, which dynamically imports a hash-named chunk.
+     There is no literal chunk URL anywhere in this document to rewrite. -->
+<script type="module" src="http://localhost:7802/panel.4f2a9c.mjs"></script>
+
+<style>
+  /* Only the shell lives here. Everything that makes this page look designed is on the CDN origin,
+     so a copy that misses cross-origin assets renders as unstyled text — visibly, not subtly. */
+  :root { color-scheme: dark; }
+  html, body { margin: 0; background: #10132B; color: #EDEAF6; }
+  body { font-family: ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", sans-serif; }
+  .shell { max-width: 1180px; margin: 0 auto; padding: 0 28px; }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="shell masthead-row">
+    <span class="wordmark">THE&nbsp;HARD&nbsp;PAGE</span>
+    <span class="readout" id="readout">
+      <span class="readout-num" id="live-count">0</span><span class="readout-den">/5 live</span>
+    </span>
+  </div>
+</header>
+
+<section class="hero">
+  <canvas id="trace" class="hero-canvas" aria-hidden="true"></canvas>
+  <div class="shell hero-inner">
+    <p class="eyebrow">Archiving test fixture</p>
+    <h1 class="hero-title">A page built<br>to break<br><em>Save&nbsp;Page&nbsp;As</em>.</h1>
+    <p class="hero-lede">
+      Five of the things this page needs come from somewhere a naive download will not follow.
+      Nothing here is exotic — it is how ordinary sites are built now. Scroll, and each section
+      will tell you whether its resource actually arrived.
+    </p>
+  </div>
+  <div class="hero-rule" aria-hidden="true"></div>
+</section>
+
+<main class="shell">
+  <ol class="traps" id="traps">
+
+    <li class="trap" data-trap="css">
+      <div class="trap-head">
+        <span class="trap-id">01</span>
+        <span class="trap-dot" aria-hidden="true"></span>
+        <span class="trap-state">checking…</span>
+      </div>
+      <h2 class="trap-name">Stylesheet on another origin</h2>
+      <p class="trap-body">
+        Every rule that gives this page a layout, a scale, and a color is served from a second
+        origin. Keep the HTML and lose the stylesheet and you keep the words and lose the design.
+      </p>
+      <p class="trap-tell">If this reads as plain text on a dark page, the stylesheet did not arrive.</p>
+    </li>
+
+    <li class="trap" data-trap="module">
+      <div class="trap-head">
+        <span class="trap-id">02</span>
+        <span class="trap-dot" aria-hidden="true"></span>
+        <span class="trap-state">checking…</span>
+      </div>
+      <h2 class="trap-name">A module that imports a chunk by hash</h2>
+      <p class="trap-body">
+        The script tag points at one module. That module imports a second file whose name contains
+        a build hash. The chunk's URL appears in no HTML you could scan and rewrite — it is
+        assembled while the page runs.
+      </p>
+      <p class="trap-tell">These status lights are driven by that chunk. Dim lights mean it never loaded.</p>
+    </li>
+
+    <li class="trap" data-trap="video">
+      <div class="trap-head">
+        <span class="trap-id">03</span>
+        <span class="trap-dot" aria-hidden="true"></span>
+        <span class="trap-state">checking…</span>
+      </div>
+      <h2 class="trap-name">Video fetched in byte ranges</h2>
+      <p class="trap-body">
+        Browsers do not download a video in one piece. They ask for byte ranges and get partial
+        responses back. Recorders that store what the browser received end up with a stack of
+        fragments and no file.
+      </p>
+      <figure class="trap-figure">
+        <video id="loop" class="trap-video" muted loop playsinline preload="auto"
+               src="http://localhost:7802/loop.mp4"></video>
+        <figcaption class="trap-caption">Playing means the full body survived, not just the fragments.</figcaption>
+      </figure>
+    </li>
+
+    <li class="trap" data-trap="runtime">
+      <div class="trap-head">
+        <span class="trap-id">04</span>
+        <span class="trap-dot" aria-hidden="true"></span>
+        <span class="trap-state">checking…</span>
+      </div>
+      <h2 class="trap-name">An image whose address is built at runtime</h2>
+      <p class="trap-body">
+        This one is not in the markup at all. A script joins a base address to a file name and sets
+        the result on an element after the page loads. There is no string to find and no link to
+        follow — you have to run the page to learn the address.
+      </p>
+      <figure class="trap-figure">
+        <img id="plate" class="trap-plate" alt="Calibration plate loaded from a runtime-built address" width="640" height="180">
+        <figcaption class="trap-caption">A blank frame here means the address was never resolved.</figcaption>
+      </figure>
+    </li>
+
+    <li class="trap" data-trap="canvas">
+      <div class="trap-head">
+        <span class="trap-id">05</span>
+        <span class="trap-dot" aria-hidden="true"></span>
+        <span class="trap-state">checking…</span>
+      </div>
+      <h2 class="trap-name">An animation that has to keep running</h2>
+      <p class="trap-body">
+        The trace behind the title is drawn frame by frame, live. A screenshot of it is not it. The
+        only way to still have this animation later is to still have the code that draws it.
+      </p>
+      <p class="trap-tell">Look up. If the line is moving, the loop is running.</p>
+    </li>
+
+  </ol>
+
+  <section class="verdict" id="verdict">
+    <p class="verdict-label">Capture verdict</p>
+    <p class="verdict-line" id="verdict-line">Waiting for the page to settle…</p>
+    <p class="verdict-note">
+      This page grades itself. Open a copy of it and the same five checks run again — so a copy
+      cannot claim to be complete while its lights are dim.
+    </p>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="shell footer-row">
+    <span>Test fixture · not a real product</span>
+    <span class="footer-mono" id="stamp">—</span>
+  </div>
+</footer>
+
+<script type="module">
+  // TRAP 05 — the hero trace. Drawn live; a still frame is not a substitute for the code.
+  const cv = document.getElementById('trace');
+  const ctx = cv.getContext('2d');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let w = 0, h = 0, t = 0, running = false;
+
+  function size() {
+    const r = Math.min(devicePixelRatio || 1, 2);
+    w = cv.clientWidth; h = cv.clientHeight;
+    cv.width = Math.round(w * r); cv.height = Math.round(h * r);
+    ctx.setTransform(r, 0, 0, r, 0, 0);
+  }
+
+  // A settling waveform: three sines beating against each other, with the newest sample brightest.
+  function frame() {
+    running = true;
+    ctx.clearRect(0, 0, w, h);
+    const mid = h * 0.5;
+    for (let pass = 0; pass < 3; pass++) {
+      ctx.beginPath();
+      for (let x = 0; x <= w; x += 2) {
+        const p = x / w;
+        const decay = Math.exp(-p * 1.4);
+        const y = mid
+          + Math.sin(p * 15 - t * 1.6 + pass * 1.1) * 44 * decay
+          + Math.sin(p * 41 + t * 0.9 - pass * 0.6) * 13 * decay
+          + Math.sin(p * 6.5 + t * 0.35) * 9;
+        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = ['rgba(255,176,58,0.85)', 'rgba(255,176,58,0.28)', 'rgba(255,61,165,0.22)'][pass];
+      ctx.lineWidth = pass === 0 ? 1.6 : 1;
+      ctx.stroke();
+    }
+    t += 0.016;
+    if (!reduce) requestAnimationFrame(frame);
+  }
+
+  addEventListener('resize', size);
+  size();
+  frame();
+  window.__traceRunning = () => running;
+</script>
+
+</body>
+</html>
