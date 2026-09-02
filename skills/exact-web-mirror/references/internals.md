@@ -257,7 +257,12 @@ Fidelity is proven, not asserted:
   so it means the copy asked for something the archive doesn't hold. `verify.mjs` splits them: a
   missing `script`/`stylesheet`/`font`/`image`/`document` (`assetGaps`) is a hole in the capture,
   while a POST to an API or a beacon (`deadEndpoints`) was never going to have a local answer. The
-  raw count means nothing without that split.
+  raw count means nothing without that split. A couple of asset gaps usually means the replay walked
+  one step further down a prefetch chain than the live pass did — prefetching a route's payload warms
+  the chunks that route's manifest names, and the second visit reaches them. Before calling one a
+  hole, grep the name across `webpage/`: if it appears only inside *another* route's prefetched
+  payload and never as a request in the HAR, the capture is intact and the copy simply asked for more
+  than the original visit did.
 - **Animation liveness:** the six `hero-f0..f5` frames (500ms apart) prove the hero actually moves
   offline rather than sitting on a frozen frame — compare frame-to-frame pixel deltas.
 
