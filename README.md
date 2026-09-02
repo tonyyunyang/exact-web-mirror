@@ -50,9 +50,11 @@ React Server Components, and misses addresses the site builds at run time anyway
 worker maps the page's original URLs onto the local files at request time instead, so the site's own
 JavaScript runs completely unmodified. It just can't tell that its "internet" is now a folder. 🤫
 
-Then it **proves it worked**: it reloads your copy with every non-localhost request blocked,
-screenshots it, and diffs it against screenshots of the live page band by band. You get a
-PASS/REVIEW verdict and side-by-side strips you can check yourself. 📊
+Then it **proves it worked**: it reloads your copy with every non-localhost request blocked and
+walks a real viewport down the page, screenshotting each stop, then diffs those against the same
+stops on the live page. (One tall full-page screenshot isn't enough — scroll-driven sections often
+never paint in it, and a diff of blank against blank looks perfect.) You get a PASS/REVIEW verdict
+and side-by-side strips you can check yourself. 📊
 
 ---
 
@@ -133,7 +135,7 @@ browser work — handy if a site challenges the capture), `--verify`.
 archives/example-com/
 ├── webpage/     the site's real files, byte-pristine, + a double-click opener and __serve.mjs
 ├── archive/     the raw capture: desktop.har.zip, mobile.har.zip, media/ — this is the master
-├── qa/          live-* vs local-* screenshots and bands-*/ side-by-side diff strips
+├── qa/          live-* vs local-* screenshots, frames-*/ (every scroll stop) and bands-*/ strips
 └── logs/        request/console logs and the verification verdict
 ```
 
@@ -206,10 +208,11 @@ examples only; no affiliation or endorsement is implied.</sub>
 | 🎞️ Extract media | `node extract-media.mjs <dir>` | Pulls complete video/audio bodies out of the HARs (streamed video otherwise records as empty range chunks) |
 | 📦 Export | `node export.mjs <dir> <url>` | Unpacks the HARs into `webpage/` as pristine files, plus the service worker and map that make original URLs resolve locally |
 | 🌐 Serve | `node serve.mjs <dir>/webpage [port] --open` | Static server with the URL mapper and HTTP Range support |
-| ✅ Verify | `node verify.mjs <dir>` | Replays the copy with all non-localhost traffic blocked, screenshots it, and band-compares against the live baseline |
+| ✅ Verify | `node verify.mjs <dir>` | Replays the copy with all non-localhost traffic blocked, screenshots every scroll stop, and compares them against the live baseline |
+| 👓 View | `node view.mjs <dir>` | Reads the copy in a Chrome it drives that can't reach anything but localhost — for sites that refuse to run off their own domain (below) |
 
-Only `record` and `verify` need Chrome. `export` and `serve` run on plain Node, so an existing
-capture can be re-exported or viewed on a machine with nothing installed.
+Only `record`, `verify` and `view` need Chrome. `export` and `serve` run on plain Node, so an
+existing capture can be re-exported or viewed on a machine with nothing installed.
 
 The hard-won details — streamed video recording as empty 206s, why you must never rewrite captured
 bytes, service-worker redirect semantics breaking module imports, CDN MIME quirks — are in
@@ -223,6 +226,24 @@ endpoints. Analytics beacons get blocked or 404. Links to pages you didn't captu
 those URLs as well if you need them. The dead endpoints are on purpose: the output is a read-only
 archive, and it's meant to stay one. 🔒
 
+**It doesn't touch the site's code, including the parts that fight being copied.** Some sites ship a
+guard that checks which domain served the page and jumps back to their real one when it isn't
+theirs, so opening that copy in your everyday browser lands you on the live site. The capture is
+still complete and still verifiable; `verify` detects the jump, reports it, and writes a note into
+the copy. Reading such a copy needs a browser that won't leave, which is what `view.mjs` is — a
+local reading room, and deliberately not a recipe for standing someone's page up on a domain of your
+own. 🚧
+
+## 🔬 Studying a capture
+
+There's a companion Workflow script,
+[`workflows/site-study.js`](skills/exact-web-mirror/workflows/site-study.js), that turns a finished
+capture into a written study of how the page is built — framework and delivery, design tokens,
+typography, motion, structure and accessibility, asset weight. Six agents investigate in parallel
+straight from the archived files, a second agent re-checks every claim against those same files, and
+a last one writes `STUDY.md`. No network, so every statement traces to a file on your disk. Ask
+Claude to *study* a capture rather than just archive it. 🧾
+
 ## 🗂️ Repository layout
 
 ```
@@ -231,6 +252,7 @@ skills/exact-web-mirror/
   SKILL.md             what Claude reads: when to use this and how
   references/          design notes and debugging gotchas
   scripts/             the pipeline
+  workflows/           site-study.js — the multi-agent study of a finished capture
 showcase/              README-ready GIF gallery and thumbnails
 install.sh             symlink or copy the skill into ~/.claude/skills/
 ```

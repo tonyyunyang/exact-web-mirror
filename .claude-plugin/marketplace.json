@@ -6,7 +6,7 @@
     {
       "name": "exact-web-mirror",
       "source": "./",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "description": "Capture a live web page and produce an exact, fully-offline local copy — the site's own real HTML/CSS/JS/fonts/video running in a normal browser. Verifies its own fidelity against the live page.",
       "category": "productivity"
     }

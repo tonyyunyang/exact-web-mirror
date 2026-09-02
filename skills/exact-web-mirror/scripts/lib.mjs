@@ -51,7 +51,7 @@ export function attachLoggers(page, log) {
   page.on('pageerror', (e) => log.pageErrors.push(String(e).slice(0, 500)));
   page.on('request', (r) => log.requests.push({ url: r.url().slice(0, 300), type: r.resourceType() }));
   page.on('requestfailed', (r) => log.failed.push({ url: r.url().slice(0, 300), type: r.resourceType(), err: r.failure()?.errorText }));
-  page.on('response', (r) => { if (r.status() >= 400) log.badStatus.push({ url: r.url().slice(0, 300), status: r.status() }); });
+  page.on('response', (r) => { if (r.status() >= 400) log.badStatus.push({ url: r.url().slice(0, 300), status: r.status(), type: r.request().resourceType(), method: r.request().method() }); });
 }
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -143,6 +143,20 @@ export async function interact(page, { mobile, qaDir, prefix }) {
       if (await el.isVisible().catch(() => false)) { await el.click({ timeout: 1500 }).catch(() => {}); await sleep(450); }
     }
   }
+  // Step a real viewport down the page and shoot each stop. A full-page screenshot re-renders the
+  // document at its entire height, and scroll-driven sections (reveal-on-scroll, pinned blocks,
+  // anything keyed to the viewport) routinely never paint in one — on pages like that most of the
+  // image comes back blank, and a 0% diff over blank pixels proves nothing. These frames are what a
+  // visitor actually sees, so they are what the comparison leans on.
+  await page.evaluate(() => window.scrollTo(0, 0)).catch(() => {});
+  await sleep(1000);
+  const steps = await page.evaluate(() => Math.min(24, Math.ceil(Math.max(document.body.scrollHeight, document.documentElement.scrollHeight) / window.innerHeight))).catch(() => 1);
+  for (let i = 0; i < steps; i++) {
+    await page.evaluate((i) => window.scrollTo(0, i * window.innerHeight), i).catch(() => {});
+    await sleep(900);
+    await shot(`scroll-${String(i).padStart(2, '0')}`);
+  }
+
   await page.evaluate(() => window.scrollTo(0, 0)).catch(() => {});
   await sleep(1200);
   await shot('full', { fullPage: true });

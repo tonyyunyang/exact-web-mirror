@@ -91,7 +91,12 @@ export function exportTree(dir, entryUrl, { port = 8890 } = {}) {
 
   fs.writeFileSync(`${L.webpageDir}/__map.json`, JSON.stringify(map));
   fs.writeFileSync(`${L.webpageDir}/__types.json`, JSON.stringify(types));
-  fs.writeFileSync(`${L.webpageDir}/__meta.json`, JSON.stringify({ primaryHost: finalUrl.host, primaryHosts: [...primaryHosts], source: startUrl, capturedAt: meta.capturedAt }));
+  // Open at the path that was archived. Archiving https://site.com/pricing and opening "/" would
+  // show whatever else happened to be captured at the root (a prefetched home page, say) instead of
+  // the page that was asked for — and a client-side router would disagree with its own RSC tree.
+  let entryPath = finalUrl.pathname + finalUrl.search;
+  if (entryPath !== '/' && ![...primaryHosts].some((h) => map[h + entryPath] || map[h + finalUrl.pathname])) entryPath = '/';
+  fs.writeFileSync(`${L.webpageDir}/__meta.json`, JSON.stringify({ primaryHost: finalUrl.host, primaryHosts: [...primaryHosts], source: startUrl, entryPath, capturedAt: meta.capturedAt }));
 
   fs.writeFileSync(`${L.webpageDir}/__sw.js`, `// Maps the page's original cross-origin URLs to the local archive (server route /__u/).
 self.addEventListener('install', () => self.skipWaiting());
@@ -115,7 +120,7 @@ self.addEventListener('fetch', (e) => {
   await navigator.serviceWorker.register('/__sw.js', { scope: '/' });
   await navigator.serviceWorker.ready;
   if (!navigator.serviceWorker.controller) await new Promise((r) => navigator.serviceWorker.addEventListener('controllerchange', r, { once: true }));
-  location.replace('/');
+  location.replace(${JSON.stringify(entryPath)});
 })();
 </script>`);
 
@@ -146,7 +151,7 @@ TO VIEW IT
   Linux  — run ./OPEN.sh
   any OS — node __serve.mjs . ${port} --open      (requires Node.js 18+)
 
-Then browse to http://localhost:${port}/ . Nothing is installed and nothing leaves your machine.
+Then browse to http://localhost:${port}${entryPath} . Nothing is installed and nothing leaves your machine.
 
 WHY A LOCAL SERVER INSTEAD OF DOUBLE-CLICKING index.html
 Browsers refuse to run service workers and ES modules from a bare file:// page. That is a browser

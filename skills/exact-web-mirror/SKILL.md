@@ -14,7 +14,7 @@ compatibility: >-
   macOS or Linux. Needs Node.js 18+, Google Chrome, and `unzip`. Run
   `node "${CLAUDE_SKILL_DIR}/scripts/setup.mjs"` once before first use to install dependencies.
 metadata:
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # Exact web mirror (record-and-replay)
@@ -96,7 +96,9 @@ archives/example-com/
 │   ├── __serve.mjs    ← the local server, copied in so this folder travels on its own
 │   └── OPEN.command / OPEN.sh / HOW-TO-OPEN.txt
 ├── archive/           ← raw capture: desktop.har.zip, mobile.har.zip, media/ (full videos)
-├── qa/                ← live-* vs local-* screenshots, bands-*/ side-by-side diff strips
+├── qa/                ← live-* vs local-* screenshots, plus side-by-side strips: frames-*/ (one per
+│                        scroll stop — the evidence that covers the page) and bands-*/ (the
+│                        full-page shot, sliced). Left = live, right = local.
 └── logs/              ← request/console logs + verify verdict
 ```
 
@@ -124,17 +126,38 @@ collection directory, e.g. `archives/example-com`. Prefix each with `${CLAUDE_SK
 | 2. Extract media | `node extract-media.mjs <dir>` | Pull complete video/audio bodies out of the HARs (streamed video records as empty-bodied range chunks — this is the one thing the archive can't serve as-is). |
 | 3. Export | `node export.mjs <dir> <url>` | Unpack the HARs into `webpage/` as **pristine, unmodified files**, and emit the service worker + server metadata that make cross-origin URLs resolve locally. |
 | 4. Serve | `node serve.mjs <dir>/webpage [port] --open` | Static server with the service-worker URL mapper and HTTP Range support (for video). |
-| 5. Verify | `node verify.mjs <dir>` | Reload the copy with **all non-localhost traffic blocked**, rerun the interaction pass, screenshot as `local-*`, and band-compare against `live-*`. Prints PASS when page heights match and diffs are animation-only. |
+| 5. Verify | `node verify.mjs <dir>` | Reload the copy with **all non-localhost traffic blocked**, rerun the interaction pass, screenshot as `local-*`, and compare against `live-*` frame by frame and band by band. Prints PASS when page heights match and diffs are animation-only. |
+| 6. Read | `node view.mjs <dir>` | Open the copy in a Chrome this skill drives that can reach nothing but localhost. Needed for origin-locked sites (below); for any other copy it's a hard-offline proof — `OPEN.command` is the everyday way in. |
 
-Steps 1–3 are what `archive.mjs` runs; 5 is what `--verify` adds. Only steps 1 and 5 need Chrome;
-export and serve run on plain Node, so an existing capture can be re-exported or viewed anywhere.
+Steps 1–3 are what `archive.mjs` runs; 5 is what `--verify` adds; 6 is on demand. Only 1, 5 and 6
+need Chrome; export and serve run on plain Node, so an existing capture can be re-exported or viewed
+anywhere.
+
+## Sites that refuse to run off their own domain
+
+Some sites ship a guard that checks which origin served the page and navigates back to their real
+domain when it isn't theirs — so opening the copy in an ordinary browser lands you on the live site
+instead. `verify` detects this, neutralizes it for the duration of the measurement (a 204 answer to
+the navigation, never a change to the site's code), prints an **ORIGIN-LOCKED** note with the
+verdict, and writes a warning into the copy's own `HOW-TO-OPEN.txt`.
+
+The archive is complete either way. Reading it offline needs a browser that won't leave, which is
+`view.mjs`. Say so plainly when reporting such a capture: it is a copy for reading locally, and not
+something that can be stood up on a domain — internals §11 covers why that boundary sits there.
 
 ## What "exact" means here — and the honest limits
 
-Verification (step 5) passes when, versus the live page: **full-page heights match to the pixel**
-(desktop 1440w and mobile 390w) and band-by-band pixel diffs are ~0% except where the page is
-genuinely animating (a video or canvas caught mid-frame). Hero animations, scroll effects, nav
-dropdowns, tabs, and carousels run because it is the site's real code.
+Verification (step 5) passes when, versus the live page: **page heights match to the pixel** (desktop
+1440w and mobile 390w) and pixel diffs are ~0% both at **every scroll stop** and across the
+full-page screenshot, except where the page is genuinely animating (a hero mid-cycle, a marquee at a
+different offset). Hero animations, scroll effects, nav dropdowns, tabs, and carousels run because it
+is the site's real code.
+
+**Weight the scroll frames, not the full-page number.** A full-page screenshot re-renders the
+document at its entire height, and scroll-driven sections frequently never paint in one — on some
+pages most of it comes back blank in the *live* shot too, and blank-vs-blank scores a flattering
+0.00%. `verify` prints how many bands actually carry content; `qa/frames-*/` is what covers the
+whole page.
 
 Expected, by-design gaps — surface these to the user rather than hiding them:
 
@@ -148,10 +171,13 @@ Expected, by-design gaps — surface these to the user rather than hiding them:
   served at capture time.
 - **Consent banners** reappear (their "remember" POST is dead offline) — the same thing a fresh
   visitor sees.
+- **Assets the archive doesn't hold.** `verify` splits local 404s into page assets it expected to
+  find (a real gap — re-record) and dead endpoints (APIs, beacons; expected). A couple of asset gaps
+  next to a matching render usually means a code path the live pass never took.
 
-Report fidelity from the evidence, not from assertion: the `qa/bands-*/` strips (left = live,
-right = local), the `[verify] PASS/REVIEW` line, and `logs/verify-meta.json`. State expected gaps
-plainly.
+Report fidelity from the evidence, not from assertion: the `qa/frames-*/` strips first (left = live,
+right = local), then `qa/bands-*/`, the `[verify] PASS/REVIEW` line, and `logs/verify-meta.json`.
+Actually open a strip or two before saying a copy matches. State expected gaps plainly.
 
 ## Fonts (optional)
 
@@ -160,6 +186,24 @@ including proprietary brand faces, sitting under `webpage/`. If the user wants a
 ("what typeface is used where"), load each part's computed `fontFamily`/`fontWeight` from the served
 copy and list the `.woff2`/`.ttf` files on disk — do not re-download from foundries. Report what the
 capture already contains, and note license class (open OFL/Apache vs proprietary) honestly.
+
+## Studying a capture
+
+`workflows/site-study.js` turns a finished capture into a written study of how the page is built:
+six dimensions — framework and delivery, design tokens and CSS, typography, motion and media, page
+structure and accessibility, asset weight — investigated in parallel straight from the archived
+files, every claim re-checked against those files by a second agent that didn't write it, then
+synthesized into `STUDY.md`. It reads the archive and nothing else.
+
+```
+Workflow({
+  scriptPath: "${CLAUDE_SKILL_DIR}/workflows/site-study.js",
+  args: { collection: "/abs/path/archives/example-com", url: "https://example.com/" }
+})
+```
+
+It spends 13 agents, so run it when the user wants the page **studied**, not merely archived.
+Everything it writes lands in `<collection>/study/`.
 
 ## Gotchas and internals
 
@@ -181,3 +225,7 @@ save you from re-deriving them.
 | Blank page, JS error about lengths/hydration | Something rewrote captured bytes | Never modify captured bytes; export keeps them pristine and maps URLs at serve time |
 | Capture challenged / blocked | Not using real Chrome | Confirm setup reports Chrome launchable; try `--headful` |
 | `Port 8890 is already in use` | Another copy is open | Pass `--port <N>`, or close the other server window |
+| Copy jumps to the live site when opened | Site is origin-locked (checks its serving domain) | Read it with `view.mjs`; the archive is fine (internals §11) |
+| `verify` screenshots one blank viewport, yet nothing 404s and there are no console errors | Origin-lock navigating away mid-parse | Already handled — `verify` answers with 204 and reports ORIGIN-LOCKED |
+| Verdict says bands are blank in both images | A full-page screenshot doesn't paint scroll-driven sections | Expected; judge `qa/frames-*/` instead (internals §12) |
+| Archived a sub-page but the copy opens the home page | Archive predates `entryPath` in `__meta.json` | Re-run `export.mjs` on the collection (internals §10) |
