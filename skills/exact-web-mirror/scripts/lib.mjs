@@ -109,6 +109,7 @@ export async function fullFetchMedia(page) {
 // screenshots line up. Triggers lazy-loading, scroll reveals, nav menus, and takes hero-motion frames.
 export async function interact(page, { mobile, qaDir, prefix }) {
   fs.mkdirSync(qaDir, { recursive: true });
+  const startedAt = page.url();
   const shot = (name, opts = {}) => page.screenshot({ path: `${qaDir}/${prefix}-${name}.png`, animations: 'allow', ...opts }).catch(() => {});
   await sleep(3000);
   await page.evaluate(() => window.scrollTo(0, 0)).catch(() => {});
@@ -143,6 +144,17 @@ export async function interact(page, { mobile, qaDir, prefix }) {
       if (await el.isVisible().catch(() => false)) { await el.click({ timeout: 1500 }).catch(() => {}); await sleep(450); }
     }
   }
+  // A "tab" or "next" control is sometimes a link. If one of those clicks navigated, everything
+  // below — the frames the comparison is built on — would be of a different page, and capture and
+  // replay would not even be on the same one. Go back before any of it is taken.
+  if (page.url() !== startedAt) {
+    console.log(`[interact] a click navigated to ${page.url().slice(0, 80)} — returning to the archived page`);
+    await page.goto(startedAt, { waitUntil: 'load', timeout: 60000 }).catch(() => {});
+    await sleep(2500);
+    await autoScroll(page);
+    await sleep(1500);
+  }
+
   // Step a real viewport down the page and shoot each stop. A full-page screenshot re-renders the
   // document at its entire height, and scroll-driven sections (reveal-on-scroll, pinned blocks,
   // anything keyed to the viewport) routinely never paint in one — on pages like that most of the

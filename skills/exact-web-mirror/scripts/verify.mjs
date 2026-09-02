@@ -1,18 +1,20 @@
 // Verify an exported copy: serve it, load it in a browser that can reach ONLY localhost (everything
-// else is aborted + logged), run the interaction pass, screenshot as local-*, and band-compare vs
-// the live-* baselines. Proves the copy is faithful AND self-contained (nothing phones home).
+// else is blocked and logged), run the interaction pass, screenshot as local-*, and compare against
+// the live-* baselines — frame by frame at every scroll stop, and band by band across the full-page
+// shot. Proves the copy is faithful AND self-contained (nothing phones home).
 // Usage: node verify.mjs <collectionDir> [--headful] [--port N]
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { devices } from 'playwright';
 import { launchBrowser, attachLoggers, newLog, interact, saveJson, summarizeLog, sleep, layout, MOBILE, DESKTOP } from './lib.mjs';
-
-// Resource kinds a faithful archive is supposed to contain; anything else 404ing offline is a dead
-// endpoint, not a gap.
-const ASSET_TYPES = new Set(['script', 'stylesheet', 'font', 'image', 'media', 'document']);
 import { startServer } from './serve.mjs';
 import { compare, compareFrames } from './compare.mjs';
+
+// Resource kinds a faithful archive is supposed to hold; anything else 404ing offline is a dead
+// endpoint rather than a gap.
+const ASSET_TYPES = new Set(['script', 'stylesheet', 'font', 'image', 'media', 'document']);
+const isAsset = (b) => b.method === 'GET' && ASSET_TYPES.has(b.type);
 
 export async function verify(dir, { headless = true, port = 8990 } = {}) {
   const L = layout(dir);
@@ -59,8 +61,8 @@ export async function verify(dir, { headless = true, port = 8990 } = {}) {
       // font is a hole in the capture, while a POST to an API or a beacon was never going to have a
       // local answer. Reported apart so the count means something.
       const notInArchive = log.badStatus.filter((b) => b.status === 404);
-      const assetGaps = [...new Set(notInArchive.filter((b) => b.method === 'GET' && ASSET_TYPES.has(b.type)).map((b) => b.url.replace(origin, '')))];
-      const deadEndpoints = notInArchive.length - notInArchive.filter((b) => b.method === 'GET' && ASSET_TYPES.has(b.type)).length;
+      const assetGaps = [...new Set(notInArchive.filter(isAsset).map((b) => b.url.replace(origin, '')))];
+      const deadEndpoints = notInArchive.filter((b) => !isAsset(b)).length;
       results[viewport] = { summary: summarizeLog(log), externalAttempts: uniq.length, externalHosts: hosts, originBounces: bounced, assetGaps, deadEndpoints };
       saveJson(`${L.logsDir}/verify-${viewport}.json`, { summary: summarizeLog(log), externalHosts: hosts, originBounces: bounced, assetGaps, deadEndpoints, externalAttempts: uniq.slice(0, 80), log });
       console.log(`[verify] ${viewport} ${JSON.stringify(summarizeLog(log))} externalAttempts:${uniq.length}${hosts.length ? ` (all blocked: ${hosts.slice(0, 6).join(', ')}${hosts.length > 6 ? ', …' : ''})` : ''}`);
@@ -109,7 +111,7 @@ export async function verify(dir, { headless = true, port = 8990 } = {}) {
     } catch {}
     console.log(`\n[verify] Note: this site is ORIGIN-LOCKED. Its own code checks the domain it is served from and\n         navigates back to ${allBounces[0]} when it isn't the real one. The archive is complete —\n         verification neutralized the bounce to measure it — but opening webpage/ in your normal\n         browser will jump to the live site. Read the copy with:\n           node ${JSON.stringify(path.join(path.dirname(fileURLToPath(import.meta.url)), 'view.mjs'))} ${JSON.stringify(dir)}`);
   }
-  return { ok, measured, cmp, results };
+  return { ok, measured, cmp, frames: frm, results };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
